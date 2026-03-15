@@ -49,11 +49,23 @@ clash-verge-rev profile current
 # Switch to a profile
 clash-verge-rev profile use <profile-uid>
 
+# Generate runtime config
+clash-verge-rev core generate
+
+# Start mihomo core
+clash-verge-rev core start
+
+# Check core status
+clash-verge-rev core status
+
 # Enable system proxy
 clash-verge-rev proxy enable
 
 # Enable TUN mode
 clash-verge-rev proxy tun-enable
+
+# Stop mihomo core
+clash-verge-rev core stop
 ```
 
 ## Commands
@@ -79,6 +91,9 @@ clash-verge-rev proxy tun-enable
 | `clash-verge-rev core config` | Show runtime config |
 | `clash-verge-rev core validate` | Validate config |
 | `clash-verge-rev core generate` | Generate config.yaml |
+| `clash-verge-rev core start` | Start mihomo core |
+| `clash-verge-rev core stop` | Stop mihomo core |
+| `clash-verge-rev core status` | Check core status |
 
 ### Configuration Commands
 

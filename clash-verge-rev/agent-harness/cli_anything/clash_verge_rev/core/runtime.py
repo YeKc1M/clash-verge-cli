@@ -5,10 +5,15 @@ Manages runtime config which is the merged/enhanced configuration
 that gets applied to the Clash core.
 """
 
-import yaml
+import os
+import signal
+import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field
+
+import yaml
 
 from .config import ConfigManager, ConfigNotFoundError
 
@@ -253,3 +258,215 @@ class RuntimeManager:
             return True
         except Exception:
             return False
+
+    def _get_pid_file(self) -> Path:
+        """Get path to the PID file for tracking mihomo process."""
+        return self.config.get_config_dir() / "mihomo.pid"
+
+    def _find_mihomo_binary(self) -> Optional[str]:
+        """
+        Find mihomo binary in common locations.
+
+        Returns:
+            Path to mihomo binary or None if not found
+        """
+        # Check common binary names and paths
+        binary_names = ["mihomo", "clash", "clash-meta"]
+        search_paths = os.environ.get("PATH", "").split(os.pathsep)
+
+        # Add common install locations
+        common_locations = [
+            "/usr/local/bin",
+            "/usr/bin",
+            "/opt/homebrew/bin",
+            "/opt/local/bin",
+            str(Path.home() / ".local/bin"),
+            str(Path.home() / "bin"),
+        ]
+        search_paths.extend(common_locations)
+
+        for name in binary_names:
+            for path in search_paths:
+                binary_path = Path(path) / name
+                if binary_path.exists() and os.access(binary_path, os.X_OK):
+                    return str(binary_path)
+
+        # Try which command as fallback
+        for name in binary_names:
+            try:
+                result = subprocess.run(
+                    ["which", name],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    return result.stdout.strip()
+            except Exception:
+                pass
+
+        return None
+
+    def start_mihomo(self, binary_path: Optional[str] = None) -> Tuple[bool, str]:
+        """
+        Start the mihomo core process.
+
+        Args:
+            binary_path: Optional path to mihomo binary. If not provided, will search PATH.
+
+        Returns:
+            Tuple of (success, message)
+        """
+        # Check if already running
+        pid_file = self._get_pid_file()
+        if pid_file.exists():
+            try:
+                pid = int(pid_file.read_text().strip())
+                if os.path.exists(f"/proc/{pid}") or self._is_process_running(pid):
+                    return False, f"Mihomo already running (PID: {pid})"
+            except (ValueError, OSError):
+                pass
+            # Stale PID file, remove it
+            pid_file.unlink(missing_ok=True)
+
+        # Find binary
+        mihomo_path = binary_path or self._find_mihomo_binary()
+        if not mihomo_path:
+            return False, "Mihomo binary not found. Install mihomo or provide path with --binary"
+
+        # Generate config first
+        if not self.apply_generate_config():
+            return False, "Failed to generate configuration"
+
+        clash_config_path = self.config.clash_path()
+        if not clash_config_path.exists():
+            return False, f"Config file not found: {clash_config_path}"
+
+        try:
+            # Start mihomo process
+            log_dir = self.config.get_logs_dir()
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / "mihomo.log"
+
+            with open(log_file, "a") as log:
+                # Write start marker
+                log.write(f"\n--- Started at {datetime.now().isoformat()} ---\n")
+                log.flush()
+
+                process = subprocess.Popen(
+                    [mihomo_path, "-f", str(clash_config_path)],
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                )
+
+            # Save PID
+            pid_file.write_text(str(process.pid))
+
+            # Quick check if process started
+            import time
+            time.sleep(0.5)
+            if process.poll() is not None:
+                # Process exited quickly
+                pid_file.unlink(missing_ok=True)
+                return False, "Mihomo process exited immediately. Check logs for errors."
+
+            return True, f"Mihomo started (PID: {process.pid})"
+
+        except Exception as e:
+            return False, f"Failed to start mihomo: {e}"
+
+    def stop_mihomo(self) -> Tuple[bool, str]:
+        """
+        Stop the mihomo core process.
+
+        Returns:
+            Tuple of (success, message)
+        """
+        pid_file = self._get_pid_file()
+
+        if not pid_file.exists():
+            # Try to find and kill by process name as fallback
+            killed = self._kill_by_name()
+            if killed:
+                return True, "Mihomo stopped (found by process name)"
+            return False, "Mihomo not running (no PID file)"
+
+        try:
+            pid = int(pid_file.read_text().strip())
+        except (ValueError, OSError) as e:
+            pid_file.unlink(missing_ok=True)
+            return False, f"Invalid PID file: {e}"
+
+        try:
+            # Try graceful shutdown first
+            os.kill(pid, signal.SIGTERM)
+
+            # Wait for process to terminate
+            import time
+            for _ in range(10):
+                if not self._is_process_running(pid):
+                    break
+                time.sleep(0.5)
+            else:
+                # Force kill if still running
+                os.kill(pid, signal.SIGKILL)
+
+            pid_file.unlink(missing_ok=True)
+            return True, f"Mihomo stopped (PID: {pid})"
+
+        except ProcessLookupError:
+            # Process already gone
+            pid_file.unlink(missing_ok=True)
+            return True, "Mihomo already stopped"
+        except PermissionError:
+            return False, f"Permission denied to stop process {pid}"
+        except Exception as e:
+            return False, f"Failed to stop mihomo: {e}"
+
+    def get_mihomo_status(self) -> Tuple[bool, Optional[int], str]:
+        """
+        Get mihomo process status.
+
+        Returns:
+            Tuple of (is_running, pid, status_message)
+        """
+        pid_file = self._get_pid_file()
+
+        if not pid_file.exists():
+            return False, None, "Not running"
+
+        try:
+            pid = int(pid_file.read_text().strip())
+            if self._is_process_running(pid):
+                return True, pid, f"Running (PID: {pid})"
+            else:
+                # Stale PID file
+                pid_file.unlink(missing_ok=True)
+                return False, None, "Not running (stale PID file removed)"
+        except (ValueError, OSError):
+            pid_file.unlink(missing_ok=True)
+            return False, None, "Not running (invalid PID file)"
+
+    def _is_process_running(self, pid: int) -> bool:
+        """Check if a process with given PID is running."""
+        try:
+            os.kill(pid, 0)
+            return True
+        except (OSError, ProcessLookupError):
+            return False
+
+    def _kill_by_name(self) -> bool:
+        """Try to kill mihomo process by name (fallback)."""
+        try:
+            for name in ["mihomo", "clash", "clash-meta"]:
+                result = subprocess.run(
+                    ["pkill", "-f", name],
+                    capture_output=True,
+                    timeout=5,
+                )
+                if result.returncode == 0:
+                    return True
+        except Exception:
+            pass
+        return False

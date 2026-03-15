@@ -52,6 +52,7 @@ def cli(ctx: click.Context, json_mode: bool, config_dir: Optional[str]) -> None:
     Examples:
         clash-verge-rev --json profile list
         clash-verge-rev core start
+        clash-verge-rev core stop
         clash-verge-rev config set enable_system_proxy true
     """
     # Ensure context object exists
@@ -563,6 +564,74 @@ def core_generate(ctx: click.Context) -> None:
         else:
             click.echo(formatter.output(None, success=False, message="Failed to generate configuration"))
             sys.exit(1)
+
+    except Exception as e:
+        formatter = get_formatter(json_mode)
+        click.echo(formatter.output(None, success=False, message=str(e)))
+        sys.exit(1)
+
+
+@core_cmd.command("start")
+@click.option("--binary", help="Path to mihomo binary (auto-detected if not provided)")
+@click.pass_context
+def core_start(ctx: click.Context, binary: Optional[str]) -> None:
+    """Start the mihomo core."""
+    config = ctx.obj["config"]
+    json_mode = ctx.obj["json_mode"]
+
+    try:
+        runtime = RuntimeManager(config)
+        success, message = runtime.start_mihomo(binary)
+
+        formatter = get_formatter(json_mode)
+        click.echo(formatter.output(None, success=success, message=message))
+
+        if not success:
+            sys.exit(1)
+
+    except Exception as e:
+        formatter = get_formatter(json_mode)
+        click.echo(formatter.output(None, success=False, message=str(e)))
+        sys.exit(1)
+
+
+@core_cmd.command("stop")
+@click.pass_context
+def core_stop(ctx: click.Context) -> None:
+    """Stop the mihomo core."""
+    config = ctx.obj["config"]
+    json_mode = ctx.obj["json_mode"]
+
+    try:
+        runtime = RuntimeManager(config)
+        success, message = runtime.stop_mihomo()
+
+        formatter = get_formatter(json_mode)
+        click.echo(formatter.output(None, success=success, message=message))
+
+        if not success:
+            sys.exit(1)
+
+    except Exception as e:
+        formatter = get_formatter(json_mode)
+        click.echo(formatter.output(None, success=False, message=str(e)))
+        sys.exit(1)
+
+
+@core_cmd.command("status")
+@click.pass_context
+def core_status(ctx: click.Context) -> None:
+    """Check mihomo core status."""
+    config = ctx.obj["config"]
+    json_mode = ctx.obj["json_mode"]
+
+    try:
+        runtime = RuntimeManager(config)
+        is_running, pid, message = runtime.get_mihomo_status()
+
+        formatter = get_formatter(json_mode)
+        data = {"running": is_running, "pid": pid, "message": message}
+        click.echo(formatter.output(data, success=True, message=message))
 
     except Exception as e:
         formatter = get_formatter(json_mode)
