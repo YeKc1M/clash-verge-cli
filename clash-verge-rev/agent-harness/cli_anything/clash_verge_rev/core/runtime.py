@@ -77,19 +77,28 @@ class RuntimeManager:
         # Apply verge settings overrides
         verge = self.config.read_verge()
 
-        # Port overrides
-        ports: Dict[str, Any] = {}
+        # Port overrides - ensure integers
+        ports: Dict[str, int] = {}
         if verge.verge_mixed_port is not None:
-            ports["mixed-port"] = verge.verge_mixed_port
+            ports["mixed-port"] = int(verge.verge_mixed_port)
         if verge.verge_socks_port is not None and verge.verge_socks_enabled:
-            ports["socks-port"] = verge.verge_socks_port
+            ports["socks-port"] = int(verge.verge_socks_port)
         if verge.verge_redir_port is not None and verge.verge_redir_enabled:
-            ports["redir-port"] = verge.verge_redir_port
+            ports["redir-port"] = int(verge.verge_redir_port)
         if verge.verge_tproxy_port is not None and verge.verge_tproxy_enabled:
-            ports["tproxy-port"] = verge.verge_tproxy_port
+            ports["tproxy-port"] = int(verge.verge_tproxy_port)
 
         if ports:
             runtime_config.update(ports)
+
+        # Ensure all port values in runtime_config are integers
+        port_keys = ["port", "socks-port", "mixed-port", "redir-port", "tproxy-port"]
+        for key in port_keys:
+            if key in runtime_config and runtime_config[key] is not None:
+                try:
+                    runtime_config[key] = int(runtime_config[key])
+                except (ValueError, TypeError):
+                    pass  # Keep original if can't convert
 
         # TUN mode
         if verge.enable_tun_mode is not None:
@@ -224,11 +233,19 @@ class RuntimeManager:
         config = self.get_runtime_config()
         verge = self.config.read_verge()
 
-        # Determine ports - verge overrides take precedence
-        mixed_port = verge.verge_mixed_port or config.get("mixed-port", 7890)
-        socks_port = verge.verge_socks_port or config.get("socks-port", 7891)
-        redir_port = verge.verge_redir_port or config.get("redir-port", 0)
-        tproxy_port = verge.verge_tproxy_port or config.get("tproxy-port", 0)
+        # Determine ports - verge overrides take precedence (cast to int)
+        def _to_int(value: Any, default: int) -> int:
+            if value is not None:
+                try:
+                    return int(value)
+                except (ValueError, TypeError):
+                    pass
+            return default
+
+        mixed_port = _to_int(verge.verge_mixed_port, config.get("mixed-port", 7890))
+        socks_port = _to_int(verge.verge_socks_port, config.get("socks-port", 7891))
+        redir_port = _to_int(verge.verge_redir_port, config.get("redir-port", 0))
+        tproxy_port = _to_int(verge.verge_tproxy_port, config.get("tproxy-port", 0))
 
         # External controller
         ec = config.get("external-controller", "127.0.0.1:9090")
@@ -236,7 +253,7 @@ class RuntimeManager:
             ec = f"127.0.0.1:{ec}"
 
         return ClashInfo(
-            port=config.get("port", 7890),
+            port=_to_int(config.get("port"), 7890),
             socks_port=socks_port,
             mixed_port=mixed_port,
             redir_port=redir_port,
