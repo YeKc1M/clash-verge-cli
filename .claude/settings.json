@@ -9,7 +9,8 @@
     "gopls-lsp@claude-plugins-official": false,
     "code-simplifier@claude-plugins-official": false,
     "everything-claude-code@everything-claude-code": true,
-    "cli-anything@cli-anything": true
+    "cli-anything@cli-anything": true,
+    "pyright-lsp@claude-plugins-official": true
   },
   "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true
