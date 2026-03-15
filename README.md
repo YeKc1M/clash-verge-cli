@@ -16,6 +16,11 @@ This CLI provides comprehensive control over Clash Verge Rev without requiring t
 - **Validation** - Validate configuration files for syntax errors
 - **JSON Output** - Machine-readable output for automation (`--json` flag)
 
+## Requirements
+
+- **Mihomo (Clash.Meta)** - The Clash core must be installed separately. The CLI controls the core but does not bundle it.
+  - Install from: https://github.com/MetaCubeX/mihomo/releases
+
 ## Installation
 
 ### From PyPI (recommended)
