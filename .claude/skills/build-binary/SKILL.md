@@ -31,7 +31,7 @@ pyinstaller clash-verge-cli.spec
 Check the binary was created successfully:
 
 ```bash
-./dist/clash-verge-cli version
+./clash-verge-cli version
 ```
 
 ## Troubleshooting
@@ -56,7 +56,7 @@ The spec file is at `clash-verge-rev/agent-harness/clash-verge-cli.spec`. If bui
 ## Output Location
 
 The built binary will be at:
-- `clash-verge-rev/agent-harness/dist/clash-verge-cli`
+- `./clash-verge-cli` (project root)
 
 ## What to Do
 
