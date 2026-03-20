@@ -6,7 +6,8 @@
     "code-simplifier@claude-plugins-official": true,
     "everything-claude-code@everything-claude-code": false,
     "cli-anything@cli-anything": true,
-    "pyright-lsp@claude-plugins-official": true
+    "pyright-lsp@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true
   },
   "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true
