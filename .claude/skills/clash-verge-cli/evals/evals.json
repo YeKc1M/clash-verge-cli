@@ -1,0 +1,23 @@
+{
+  "skill_name": "clash-verge-cli",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I want to import a new VPN subscription from https://example.com/sub.yaml and start using it. Walk me through the exact commands to import it, switch to it, and get the proxy running.",
+      "expected_output": "Step-by-step instructions using correct clash-verge-cli commands: profile import --url, profile use, core generate, core start, proxy enable",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "My clash core stopped working after I updated a profile. How do I restore my last backup using clash-verge-cli?",
+      "expected_output": "Instructions to list backups, identify latest, and run backup restore with correct flags",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I need a bash script that checks if the clash core is running and, if not, finds the profile with 'fast' in the name and switches to it before starting the core.",
+      "expected_output": "Bash script using --json flag, jq for parsing, core status check, profile list filtering, profile use, core generate, core start",
+      "files": []
+    }
+  ]
+}
