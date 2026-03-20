@@ -1,14 +1,10 @@
 {
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": false,
     "context7@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": false,
-    "plugin-dev@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
-    "gopls-lsp@claude-plugins-official": false,
-    "code-simplifier@claude-plugins-official": false,
-    "everything-claude-code@everything-claude-code": true,
+    "code-simplifier@claude-plugins-official": true,
+    "everything-claude-code@everything-claude-code": false,
     "cli-anything@cli-anything": true,
     "pyright-lsp@claude-plugins-official": true
   },
